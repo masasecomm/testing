@@ -10,6 +10,16 @@ const GOOGLE_URL_PATTERNS = [
 ];
 
 const NEW_ENTRIES_LIMIT = 10;
+const SHEET_SYNC_ALARM = 'sheet-sync-retry';
+
+function ensureSheetSyncAlarm() {
+  chrome.alarms.get(SHEET_SYNC_ALARM, alarm => {
+    if (!alarm) chrome.alarms.create(SHEET_SYNC_ALARM, { periodInMinutes: 1 });
+  });
+}
+
+chrome.runtime.onInstalled.addListener(ensureSheetSyncAlarm);
+chrome.runtime.onStartup.addListener(ensureSheetSyncAlarm);
 
 // Ask Chrome not to auto-discard this tab to reclaim memory while we're
 // relying on it staying alive in the background.
@@ -33,8 +43,10 @@ async function syncCapturedDataToSheet() {
     newEntries: [],
     evictedFromFeed: [],
     blacklistKeywords: '',
+    lastSheetSyncScanCount: 0,
   });
   if (!data.sheetWebhookUrl) return;
+  if ((data.lastSheetSyncScanCount || 0) >= (data.scanCount || 0)) return;
 
   const blacklist = (data.blacklistKeywords || '')
     .split('\n').map(word => word.trim().toLowerCase()).filter(Boolean);
@@ -84,11 +96,22 @@ async function syncCapturedDataToSheet() {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload),
     });
-    await chrome.storage.local.set({ lastSheetSyncAt: Date.now() });
+
+    await chrome.storage.local.set({
+      lastSheetSyncAt: Date.now(),
+      lastSheetSyncScanCount: data.scanCount || 0,
+    });
   } catch (error) {
     console.warn('[GTS] Google Sheets sync after capture failed', error);
   }
 }
+
+chrome.alarms.onAlarm.addListener(alarm => {
+  if (alarm.name !== SHEET_SYNC_ALARM) return;
+  syncCapturedDataToSheet().catch(error => {
+    console.warn('[GTS] Could not retry Google Sheets sync', error);
+  });
+});
 
 // When capturing gets turned on (from the dashboard or the popup), protect
 // whichever Google tab exists right away rather than waiting a minute.
@@ -104,6 +127,13 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
       await syncCapturedDataToSheet();
     } catch (error) {
       console.warn('[GTS] Could not prepare Google Sheets sync after capture', error);
+    }
+  }
+  if (changes.sheetWebhookUrl && changes.sheetWebhookUrl.newValue) {
+    try {
+      await syncCapturedDataToSheet();
+    } catch (error) {
+      console.warn('[GTS] Could not sync existing captures after saving the Sheets URL', error);
     }
   }
 });

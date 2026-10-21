@@ -3,7 +3,7 @@
   "name": "Trending Searches V4",
   "version": "4.0.0",
   "description": "Capture and track Google autocomplete suggestions, view local history, export results, and sync to Google Sheets.",
-  "permissions": ["activeTab", "clipboardWrite", "scripting", "storage", "tabs"],
+  "permissions": ["activeTab", "alarms", "clipboardWrite", "scripting", "storage", "tabs"],
   "host_permissions": ["https://script.google.com/*", "https://script.googleusercontent.com/*"],
   "background": {
     "service_worker": "background.js"

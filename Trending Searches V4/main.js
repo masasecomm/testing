@@ -84,7 +84,7 @@ function updateStartPauseBtnMain(running) {
   startPauseBtnMain.classList.toggle('btn-success', !running);
   startPauseBtnMain.classList.toggle('btn-danger', running);
   captureStatusMain.textContent = running
-    ? '🔄 Auto-capture RUNNING — captures in an already-open Google tab.'
+    ? '🔄 Auto-capture RUNNING — uses an open Google tab in the background.'
     : '⏸ Auto-capture paused';
   captureStatusMain.classList.toggle('running', running);
 }
@@ -732,7 +732,10 @@ async function syncSheetToGoogle() {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload),
     });
-    chrome.storage.local.set({ lastSheetSyncAt: Date.now() });
+    chrome.storage.local.set({
+      lastSheetSyncAt: Date.now(),
+      lastSheetSyncScanCount: data.scanCount || 0,
+    });
     setSheetMsg('✅ Synced ' + entries.length + ' queries across 4 sheets at ' + formatLocalTime(), '#065f46');
   } catch (err) {
     setSheetMsg('❌ Sync failed: ' + err.message, '#991b1b');

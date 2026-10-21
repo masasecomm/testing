@@ -58,88 +58,36 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
-async function getCurrentTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  return tab;
-}
-
-function scrapeTrends() {
-  const trends = [];
-  const selectors = [
-    'ul[role="listbox"] li .wM6W7d', 'ul[role="listbox"] li .sbl1',
-    'ul[role="listbox"] li .pcTkSc', '.OBMEnb .trsqMc', '.OBMEnb .mKaEGd',
-    '.aajZCb .sbl1', '.aajZCb .wM6W7d', '[role="option"] .wM6W7d',
-    '[role="option"] .sbl1', '[role="listbox"] [role="option"]',
-    '.s71ifd', '.pIhnMd', '.C3mZkd', '.erkvQe li', '.EIaa9b',
-  ];
-  const EXCLUDED = ['MagqMc', 'ZFiwCf', 'U48fD', 'jRKCUd', 'LGwnxb', 'w2fKdd', 'Bi9oQd', 'sOmPcf', 'TQc1id', 'Zjtggb', 'kC8B4e', 'nCFUpc'].map(c => '.' + c).join(',');
-  const isExcluded = (el) => {
-    if (!el || el.closest(EXCLUDED)) return true;
-    const t = (el.textContent || '').trim().toLowerCase();
-    return t === 'see more' || t === 'show more';
-  };
-  const isValidQuery = (t) => {
-    if (!t) return false;
-    if (t.length < 2 || t.length > 120) return false;
-    if (t.includes('.MagqMc')) return false;
-    if (/\.[A-Za-z][A-Za-z0-9_-]{3,}\s*\{/.test(t)) return false;
-    if (/[{};]/.test(t) && /[:\-]/.test(t)) return false;
-    if (t.includes('var(--')) return false;
-    if (t.includes('background-color') || t.includes('webkit-') || t.includes('font-family')) return false;
-    if (/^[.#][A-Za-z]/.test(t)) return false;
-    if (!/[\p{L}\p{N}]/u.test(t)) return false;
-    const lower = t.toLowerCase();
-    if (lower.includes('see more')) return false;
-    return lower !== 'show more';
-  };
-  const cleanText = (el) => {
-    const clone = el.cloneNode(true);
-    clone.querySelectorAll('svg, img, style, script, button, [aria-hidden="true"], [aria-label="Delete"], [aria-label="Remove"]').forEach(n => n.remove());
-    // Insert a real space at every element boundary so a query and a
-    // glued-on descriptor (e.g. "Harvey ElliottEnglish footballer") never
-    // end up concatenated with no space between them.
-    clone.querySelectorAll('*').forEach(node => node.after(' '));
-    let txt = (clone.textContent || '').replace(/\s+/g, ' ').trim();
-    txt = txt.replace(/\s*(Delete|Remove)\s*$/i, '').trim();
-    // Catch-all: split any remaining "wordWord" / "ABCWord" glue.
-    txt = txt.replace(/([a-z0-9])([A-Z][a-z])/g, '$1 $2');
-    txt = txt.replace(/([A-Z]{2,})([A-Z][a-z])/g, '$1 $2');
-    txt = txt.replace(/\s+/g, ' ').trim();
-    return txt;
-  };
-  for (const sel of selectors) {
-    document.querySelectorAll(sel).forEach(el => {
-      if (isExcluded(el)) return;
-      const t = cleanText(el);
-      if (isValidQuery(t) && !trends.includes(t)) trends.push(t);
-    });
-  }
-  if (trends.length === 0) {
-    document.querySelectorAll('[role="listbox"] [role="option"], .aajZCb li').forEach(el => {
-      if (isExcluded(el)) return;
-      const t = cleanText(el);
-      if (isValidQuery(t) && !trends.includes(t)) trends.push(t);
-    });
-  }
-  return trends;
-}
+const GOOGLE_URL_PATTERNS = [
+  '*://www.google.com/*', '*://www.google.co.uk/*', '*://www.google.co.za/*',
+  '*://www.google.co.in/*', '*://www.google.com.au/*', '*://www.google.com.br/*',
+  '*://www.google.ca/*', '*://www.google.de/*', '*://www.google.fr/*',
+];
 
 async function getTrends() {
-  const tab = await getCurrentTab();
-  if (!tab || !tab.url || !tab.url.includes('google.')) {
+  const tabs = await chrome.tabs.query({ url: GOOGLE_URL_PATTERNS });
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tab = tabs.find(candidate => candidate.id === activeTab?.id) || tabs[0];
+  if (!tab) {
     statusEl.className = 'status inactive';
-    statusEl.textContent = '⚠️ Navigate to Google first';
+    statusEl.textContent = '⚠️ Keep a Google tab open; you can use any tab.';
     return null;
   }
   statusEl.className = 'status active';
-  statusEl.textContent = '✅ On Google - ready to capture';
+  statusEl.textContent = '✅ Google tab found — the active tab can be anything.';
   copyBtn.disabled = false;
-  try {
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id }, func: scrapeTrends,
+  return new Promise(resolve => {
+    chrome.tabs.sendMessage(tab.id, { type: 'GTS_GET_TRENDS' }, response => {
+      if (chrome.runtime.lastError) {
+        console.warn('[GTS] Could not read suggestions from Google tab', chrome.runtime.lastError.message);
+        statusEl.className = 'status inactive';
+        statusEl.textContent = '⚠️ Refresh the open Google tab to enable scanning.';
+        resolve([]);
+        return;
+      }
+      resolve(response?.trends || []);
     });
-    return result.result;
-  } catch (e) { console.error(e); return []; }
+  });
 }
 
 // Save trends + maintain a "newEntries" feed (newest first, max 10, deduped).
@@ -288,7 +236,7 @@ function updateStartPauseBtn(running) {
   if (running) {
     startPauseBtn.textContent = '⏸ Pause';
     startPauseBtn.className = 'start-pause-btn running';
-    captureStats.innerHTML = '🔄 Auto-capture <strong>RUNNING</strong> — captures in an already-open Google tab.';
+    captureStats.innerHTML = '🔄 Auto-capture <strong>RUNNING</strong> — uses an open Google tab in the background.';
   } else {
     startPauseBtn.textContent = '▶ Start';
     startPauseBtn.className = 'start-pause-btn paused';
@@ -379,7 +327,7 @@ copyBtn.addEventListener('click', async () => {
   const trends = await getTrends();
   if (!trends || trends.length === 0) {
     statusEl.className = 'status inactive';
-    statusEl.textContent = '⚠️ No trends found. Click the search bar first!';
+    statusEl.textContent = '⚠️ No suggestions found. Open Google in any tab and show suggestions.';
     return;
   }
   await saveTrends(trends);
@@ -403,6 +351,7 @@ document.getElementById('resetDataBtn').addEventListener('click', () => {
     publishedQueries: [],
     captureElapsedSeconds: 0,
     lastCaptureAt: 0,
+    lastSheetSyncScanCount: 0,
   }, () => {
     if (chrome.runtime.lastError) {
       statusEl.className = 'status inactive';
@@ -514,7 +463,10 @@ async function syncToSheet() {
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(payload),
         });
-        chrome.storage.local.set({ lastSheetSyncAt: Date.now() });
+        chrome.storage.local.set({
+          lastSheetSyncAt: Date.now(),
+          lastSheetSyncScanCount: data.scanCount || 0,
+        });
         setSheetStatus('✅ Synced ' + payload.all.length + ' queries at ' + formatLocalTime(), 'ok');
         resolve(true);
       } catch (err) {

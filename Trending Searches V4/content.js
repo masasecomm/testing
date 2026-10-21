@@ -88,6 +88,12 @@
     return trends;
   }
 
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type !== 'GTS_GET_TRENDS') return false;
+    sendResponse({ trends: getTrendingSearches() });
+    return false;
+  });
+
   const NEW_ENTRIES_LIMIT = 10;
   function saveTrendsToStorage(trends) {
     return new Promise((resolve, reject) => {
