@@ -118,7 +118,10 @@ function saveTrends(trends) {
         history[q].lastSeen = nowIso;
         history[q].recent = (history[q].recent || []).concat(scanIdx).slice(-15);
       });
-      chrome.storage.local.set({ trendHistory: history, scanCount: scanIdx, newEntries: feed, lastCaptureAt: Date.now() }, () => resolve(history));
+      chrome.storage.local.set({ trendHistory: history, scanCount: scanIdx, newEntries: feed, lastCaptureAt: Date.now() }, () => {
+        if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+        else resolve(history);
+      });
     });
   });
 }
@@ -236,7 +239,7 @@ function updateStartPauseBtn(running) {
   if (running) {
     startPauseBtn.textContent = '⏸ Pause';
     startPauseBtn.className = 'start-pause-btn running';
-    captureStats.innerHTML = '🔄 Auto-capture <strong>RUNNING</strong> — uses an open Google tab in the background.';
+    captureStats.innerHTML = '🔄 Auto-capture <strong>RUNNING</strong> — scans an open Google tab in the background.';
   } else {
     startPauseBtn.textContent = '▶ Start';
     startPauseBtn.className = 'start-pause-btn paused';
@@ -324,15 +327,27 @@ function exportToExcel() {
 }
 
 copyBtn.addEventListener('click', async () => {
-  const trends = await getTrends();
+  let trends;
+  try {
+    trends = await getTrends();
+  } catch (error) {
+    statusEl.className = 'status inactive';
+    statusEl.textContent = '❌ Could not read Google suggestions: ' + error.message;
+    return;
+  }
   if (!trends || trends.length === 0) {
     statusEl.className = 'status inactive';
     statusEl.textContent = '⚠️ No suggestions found. Open Google in any tab and show suggestions.';
     return;
   }
-  await saveTrends(trends);
-  await navigator.clipboard.writeText(trends.join('\n'));
-  statusEl.textContent = `✅ Copied & saved ${trends.length} searches!`;
+  try {
+    await saveTrends(trends);
+    await navigator.clipboard.writeText(trends.join('\n'));
+    statusEl.textContent = `✅ Copied & saved ${trends.length} searches!`;
+  } catch (error) {
+    statusEl.className = 'status inactive';
+    statusEl.textContent = '❌ Could not save or copy the searches: ' + error.message;
+  }
   loadHistory();
 });
 

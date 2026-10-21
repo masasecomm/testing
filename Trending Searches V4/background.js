@@ -21,8 +21,6 @@ function ensureSheetSyncAlarm() {
 chrome.runtime.onInstalled.addListener(ensureSheetSyncAlarm);
 chrome.runtime.onStartup.addListener(ensureSheetSyncAlarm);
 
-// Ask Chrome not to auto-discard this tab to reclaim memory while we're
-// relying on it staying alive in the background.
 async function protectFromDiscard(tabId) {
   try { await chrome.tabs.update(tabId, { autoDiscardable: false }); } catch (e) { /* ignore */ }
 }
@@ -113,13 +111,11 @@ chrome.alarms.onAlarm.addListener(alarm => {
   });
 });
 
-// When capturing gets turned on (from the dashboard or the popup), protect
-// whichever Google tab exists right away rather than waiting a minute.
 chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area !== 'local') return;
   if (changes.autoCapture && changes.autoCapture.newValue) {
     const tabs = await chrome.tabs.query({ url: GOOGLE_URL_PATTERNS });
-    if (tabs.length) await Promise.all(tabs.map(t => protectFromDiscard(t.id)));
+    if (tabs.length) await Promise.all(tabs.map(tab => protectFromDiscard(tab.id)));
   }
   if (changes.scanCount
       && Number(changes.scanCount.newValue || 0) > Number(changes.scanCount.oldValue || 0)) {
