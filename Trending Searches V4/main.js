@@ -2,30 +2,29 @@
 const $ = id => document.getElementById(id);
 const NEW_ENTRIES_LIMIT = 10;
 
-// ---------- CAT clock ----------
-function formatCATTime(d = new Date()) {
+// ---------- Local clock ----------
+function formatLocalTime(d = new Date()) {
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Africa/Harare', hour12: false,
+    hour12: false,
     hour: '2-digit', minute: '2-digit', second: '2-digit',
-  }).format(d) + ' CAT';
+  }).format(d);
 }
-function formatCATDateForFile(d = new Date()) {
+function formatLocalDateForFile(d = new Date()) {
   const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Africa/Harare',
     day: '2-digit', month: '2-digit', year: 'numeric',
   }).formatToParts(d);
   const get = t => parts.find(p => p.type === t).value;
   return `${get('day')}|${get('month')}|${get('year')}`;
 }
-function formatCATDateTime(d = new Date()) {
+function formatLocalDateTime(d = new Date()) {
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Africa/Harare', hour12: false,
+    hour12: false,
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   }).format(d).replace(',', '');
 }
-setInterval(() => { $('catTime').textContent = formatCATTime(); }, 1000);
-$('catTime').textContent = formatCATTime();
+setInterval(() => { $('localTime').textContent = formatLocalTime(); }, 1000);
+$('localTime').textContent = formatLocalTime();
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
@@ -300,7 +299,7 @@ function render() {
         return `<div class="row" data-q="${q}">
           <span class="num">${i + 1}</span>
           <span class="q">${q}</span>
-          <span class="count">${formatCATDateTime(new Date(p.publishedAt))}</span>
+          <span class="count">${formatLocalDateTime(new Date(p.publishedAt))}</span>
           <button class="copy-btn" data-q="${q}" title="Copy query">📋</button>
         </div>`;
       }).join('');
@@ -431,7 +430,7 @@ $('csvExportBtn').addEventListener('click', () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Trending Queries ${formatCATDateForFile()}.csv`;
+  a.download = `Trending Queries ${formatLocalDateForFile()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 });
@@ -514,7 +513,7 @@ function openQueryModal(query) {
     const info = data.trendHistory[query] || { count: 0, firstSeen: null, lastSeen: null, recent: [] };
     const recentStart = Math.max(1, (data.scanCount || 0) - 2);
     const recentHits = (info.recent || []).filter(s => s >= recentStart).length;
-    const fmt = iso => iso ? formatCATDateTime(new Date(iso)) + ' CAT' : '—';
+    const fmt = iso => iso ? formatLocalDateTime(new Date(iso)) : '—';
     const alreadyPublished = (data.publishedQueries || []).some(p => p.query === query);
     modalPublishBtn.disabled = alreadyPublished;
     modalPublishBtn.textContent = alreadyPublished ? '✓ Already Published' : '📤 Publish';
@@ -559,7 +558,7 @@ modalPublishBtn.addEventListener('click', () => {
           await fetch(data.sheetWebhookUrl, {
             method: 'POST', mode: 'no-cors',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'publish', query, publishedAtCAT: formatCATDateTime() + ' CAT' }),
+            body: JSON.stringify({ action: 'publish', query, publishedAtLocalTime: formatLocalDateTime() }),
           });
         } catch (e) { console.warn('publish sync failed', e); }
       }
@@ -599,8 +598,8 @@ $('exportBtn').addEventListener('click', () => {
       `<Row><Cell><Data ss:Type="String">${escXml(p.query)}</Data></Cell></Row>`
     ).join('');
 
-    const exportedAt = formatCATDateTime() + ' CAT';
-    const metaRow = `<Row><Cell><Data ss:Type="String">Exported (CAT)</Data></Cell><Cell><Data ss:Type="String">${escXml(exportedAt)}</Data></Cell></Row>`;
+    const exportedAt = formatLocalDateTime() + ' Local';
+    const metaRow = `<Row><Cell><Data ss:Type="String">Exported (Local Time)</Data></Cell><Cell><Data ss:Type="String">${escXml(exportedAt)}</Data></Cell></Row>`;
     const cols3 = `<Column ss:Width="40"/><Column ss:Width="320"/><Column ss:Width="80"/>`;
     const cols1 = `<Column ss:Width="320"/>`;
 
@@ -619,7 +618,7 @@ $('exportBtn').addEventListener('click', () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Trending Queries ${formatCATDateForFile()}.xls`;
+    a.download = `Trending Queries ${formatLocalDateForFile()}.xls`;
     a.click();
     URL.revokeObjectURL(url);
   });
@@ -721,7 +720,7 @@ async function syncSheetToGoogle() {
     const toRows = arr => arr.map((r, i) => ({ rank: i + 1, query: r.query, count: r.count || 1 }));
     const payload = {
       action: 'bucketSync',
-      exportedAtCAT: formatCATDateTime() + ' CAT',
+      exportedAtLocalTime: formatLocalDateTime() + ' Local',
       all: toRows(entries),
       newEntries: toRows(buckets.newEntries),
       rising: toRows(buckets.rising),
@@ -734,7 +733,7 @@ async function syncSheetToGoogle() {
       body: JSON.stringify(payload),
     });
     chrome.storage.local.set({ lastSheetSyncAt: Date.now() });
-    setSheetMsg('✅ Synced ' + entries.length + ' queries across 4 sheets at ' + formatCATTime(), '#065f46');
+    setSheetMsg('✅ Synced ' + entries.length + ' queries across 4 sheets at ' + formatLocalTime(), '#065f46');
   } catch (err) {
     setSheetMsg('❌ Sync failed: ' + err.message, '#991b1b');
   } finally {
@@ -758,9 +757,9 @@ $('resetSheetBtn').addEventListener('click', () => {
       await fetch(data.sheetWebhookUrl, {
         method: 'POST', mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'reset', resetAtCAT: formatCATDateTime() + ' CAT' }),
+        body: JSON.stringify({ action: 'reset', resetAtLocalTime: formatLocalDateTime() }),
       });
-      setSheetMsg('✅ Google Sheet reset request sent at ' + formatCATTime(), '#065f46');
+      setSheetMsg('✅ Google Sheet reset request sent at ' + formatLocalTime(), '#065f46');
     } catch (err) {
       setSheetMsg('❌ Reset failed: ' + err.message, '#991b1b');
     }

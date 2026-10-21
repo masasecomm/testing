@@ -253,6 +253,25 @@
     });
   }
 
+  async function dismissSuggestions(input) {
+    const outsideTarget = document.body;
+    if (!outsideTarget) return;
+
+    ['mousedown', 'mouseup', 'click'].forEach(type => {
+      outsideTarget.dispatchEvent(new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+      }));
+    });
+    if (input && document.activeElement === input) input.blur();
+
+    const start = Date.now();
+    while (isDropdownVisible() && Date.now() - start < 1000) {
+      await delay(100);
+    }
+  }
+
   async function runOneAutoCycle() {
     if (autoCycleRunning) return;
     autoCycleRunning = true;
@@ -271,6 +290,7 @@
           if (trends.length > 0) {
             await saveTrendsToStorage(trends);
             await incrementCycleCount();
+            await dismissSuggestions(input);
             await delay(5000);
           } else {
             await delay(2000);

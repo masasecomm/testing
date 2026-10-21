@@ -1,5 +1,5 @@
 // Trending Searches Copier — V2
-// CAT (Africa/Harare, UTC+2). New Entries feed (max 20, newest first).
+// New Entries feed (max 10, newest first).
 
 const NEW_ENTRIES_LIMIT = 10;
 
@@ -13,7 +13,7 @@ const captureStats = document.getElementById('captureStats');
 const startPauseBtn = document.getElementById('startPauseBtn');
 const runDurationEl = document.getElementById('runDuration');
 const cyclesCountEl = document.getElementById('cyclesCount');
-const catTimeEl = document.getElementById('catTime');
+const localTimeEl = document.getElementById('localTime');
 const statTotalEl = document.getElementById('statTotal');
 const statScansEl = document.getElementById('statScans');
 const statUniqueEl = document.getElementById('statUnique');
@@ -24,30 +24,29 @@ const copyNewAllBtn = document.getElementById('copyNewAll');
 
 let durationTimer = null;
 
-// ---------- CAT helpers ----------
-function formatCATTime(d = new Date()) {
+// ---------- Local time helpers ----------
+function formatLocalTime(d = new Date()) {
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Africa/Harare', hour12: false,
+    hour12: false,
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   }).format(d);
 }
-function formatCATDateForFile(d = new Date()) {
+function formatLocalDateForFile(d = new Date()) {
   const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Africa/Harare',
     day: '2-digit', month: '2-digit', year: 'numeric',
   }).formatToParts(d);
   const get = t => parts.find(p => p.type === t).value;
   return `${get('day')}|${get('month')}|${get('year')}`;
 }
-function formatCATDateTime(d) {
+function formatLocalDateTime(d = new Date()) {
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Africa/Harare', hour12: false,
+    hour12: false,
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   }).format(d).replace(',', '');
 }
-function tickCATClock() { catTimeEl.textContent = formatCATTime(); }
-setInterval(tickCATClock, 1000); tickCATClock();
+function tickLocalClock() { localTimeEl.textContent = formatLocalTime(); }
+setInterval(tickLocalClock, 1000); tickLocalClock();
 
 // ---------- Tabs ----------
 document.querySelectorAll('.tab').forEach(tab => {
@@ -354,8 +353,8 @@ function exportToExcel() {
     ).join('');
     const allRows = headerRow + buildRows(entries);
     const topRows = headerRow + buildRows(entries.slice(0, 20));
-    const exportedAt = formatCATDateTime(new Date()) + ' CAT';
-    const metaRow = `<Row><Cell><Data ss:Type="String">Exported (CAT)</Data></Cell><Cell><Data ss:Type="String">${escXml(exportedAt)}</Data></Cell></Row>`;
+    const exportedAt = formatLocalDateTime() + ' Local';
+    const metaRow = `<Row><Cell><Data ss:Type="String">Exported (Local Time)</Data></Cell><Cell><Data ss:Type="String">${escXml(exportedAt)}</Data></Cell></Row>`;
     const xml = `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>`
       + `<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">`
       + `<Worksheet ss:Name="All Trends"><Table>`
@@ -369,7 +368,7 @@ function exportToExcel() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Trending Queries ${formatCATDateForFile(new Date())}.xls`;
+    a.download = `Trending Queries ${formatLocalDateForFile()}.xls`;
     a.click();
     URL.revokeObjectURL(url);
     statusEl.textContent = `✅ Exported "${a.download}"`;
@@ -488,7 +487,7 @@ function buildSheetPayload(history, scanCount, newFeed, evictedFromFeed) {
   const toRows = arr => arr.map((r, i) => ({ rank: i + 1, query: r.query, count: r.count || 1 }));
   return {
     action: 'bucketSync',
-    exportedAtCAT: formatCATDateTime(new Date()) + ' CAT',
+    exportedAtLocalTime: formatLocalDateTime() + ' Local',
     all: toRows(b.entries),
     newEntries: toRows(b.newEntries),
     rising: toRows(b.rising),
@@ -516,7 +515,7 @@ async function syncToSheet() {
           body: JSON.stringify(payload),
         });
         chrome.storage.local.set({ lastSheetSyncAt: Date.now() });
-        setSheetStatus('✅ Synced ' + payload.all.length + ' queries at ' + formatCATTime(), 'ok');
+        setSheetStatus('✅ Synced ' + payload.all.length + ' queries at ' + formatLocalTime(), 'ok');
         resolve(true);
       } catch (err) {
         setSheetStatus('❌ Sync failed: ' + err.message, 'err');

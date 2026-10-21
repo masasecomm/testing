@@ -235,8 +235,8 @@
   <div class="header">
     <button class="close-btn" id="popupCloseBtn" title="Close popup">✕</button>
     <h1>📋 Trending Searches V4</h1>
-    <p>Capture · Track · Export · CAT Time</p>
-    <div class="tz">🕒 <span id="catTime">--:--:--</span> CAT (Harare/Pretoria)</div>
+    <p>Capture · Track · Export · Local Time</p>
+    <div class="tz">🕒 <span id="localTime">--:--:--</span> Local time</div>
   </div>
   <div class="content">
     <div id="status" class="status">Checking page...</div>
@@ -281,7 +281,7 @@
         <button id="saveSheetUrl" class="btn-save">💾 Save URL</button>
         <button id="syncSheetNow" class="btn-sync">⬆ Sync now</button>
       </div>
-      <div style="font-size:10px;color:#5b6472;margin-top:6px;">Auto-syncs every 5 seconds while the dashboard is open.</div>
+      <div style="font-size:10px;color:#5b6472;margin-top:6px;">Auto-syncs after successful scans and every 5 seconds while the dashboard is open.</div>
       <div class="sheet-status" id="sheetStatus"></div>
       <button class="help-toggle" id="helpToggle">▸ How to set up the Google Sheet</button>
       <div class="help-body" id="helpBody">
@@ -305,7 +305,7 @@
     const s = ss.getSheetByName(sheetName);
     s.clear();
     let r = 1;
-    if (meta) { s.getRange(r,1,1,2).setValues([['Exported (CAT)', meta]]); r++; }
+    if (meta) { s.getRange(r,1,1,2).setValues([['Exported (Local Time)', meta]]); r++; }
     s.getRange(r,1,1,3).setValues([['Rank','Search Query','Times Seen']]); r++;
     if (rows && rows.length) {
       const vals = rows.map(x => [x.rank, x.query, x.count]);
@@ -322,8 +322,7 @@
   if (data.action === 'publish') {
     const s = ss.getSheetByName('Published Queries');
     // Ensure headers in A1:B1
-    if (s.getRange(1,1).getValue() === '') s.getRange(1,1).setValue('Published Query');
-    if (s.getRange(1,2).getValue() === '') s.getRange(1,2).setValue('Published At (CAT)');
+    s.getRange(1,1,1,2).setValues([['Published Query','Published At (Local Time)']]);
     // Find first empty row in column A
     const colA = s.getRange('A:A').getValues();
     let nextRow = 0;
@@ -332,8 +331,7 @@
     }
     if (nextRow === 0) nextRow = colA.length + 1;
     // Write query + timestamp so Make.com "Watch Changes" detects a new row
-    const tsCAT = Utilities.formatDate(new Date(), 'Africa/Harare', 'dd/MM/yyyy HH:mm:ss') + ' CAT';
-    s.getRange(nextRow, 1, 1, 2).setValues([[data.query, tsCAT]]);
+    s.getRange(nextRow, 1, 1, 2).setValues([[data.query, data.publishedAtLocalTime || '']]);
     // Force Sheets to commit the write so external integrations detect the new row
     SpreadsheetApp.flush();
     return ContentService.createTextOutput(JSON.stringify({ ok:true, published:data.query, row:nextRow }))
@@ -341,13 +339,13 @@
   }
 
   // Default: bucketSync — refresh the 4 query sheets, leave Published untouched
-  writeQuery('All Captured Queries', data.all || [], data.exportedAtCAT);
+  writeQuery('All Captured Queries', data.all || [], data.exportedAtLocalTime);
   writeQuery('New Entries', data.newEntries || []);
   writeQuery('Rising Queries', data.rising || []);
   writeQuery('Dying Queries', data.dying || []);
   // Ensure Published header exists but never wipe it
   const pub = ss.getSheetByName('Published Queries');
-  if (pub.getRange(1,1).getValue() === '') pub.getRange(1,1).setValue('Published Query');
+  pub.getRange(1,1,1,2).setValues([['Published Query','Published At (Local Time)']]);
 
   return ContentService.createTextOutput(JSON.stringify({ ok:true }))
     .setMimeType(ContentService.MimeType.JSON);
