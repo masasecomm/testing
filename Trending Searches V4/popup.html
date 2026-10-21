@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 380px;
+      font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+      background: linear-gradient(160deg, #eef0f3 0%, #e1e4ea 100%);
+      color: #1a2233;
+    }
+    .header {
+      background: linear-gradient(120deg, #1e2a47 0%, #16213a 100%);
+      color: #fff;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .header { position: relative; }
+    .header h1 { font-size: 15px; font-weight: 500; }
+    .header p { font-size: 11px; opacity: 0.85; margin-top: 3px; }
+    .header .tz { font-size: 10px; opacity: 0.85; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .header .close-btn {
+      position: absolute; top: 8px; right: 8px;
+      background: rgba(255,255,255,0.18); color: #fff; border: none;
+      width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+      font-size: 14px; line-height: 26px; padding: 0; flex: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .header .close-btn:hover { background: rgba(255,255,255,0.32); }
+    .content { padding: 12px 16px; }
+    .status {
+      background: #eef1f5;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #5b6472;
+      text-align: center;
+    }
+    .status.active { background: #e1f2ea; color: #0e6b46; }
+    .status.inactive { background: #fdf1e6; color: #b3540a; }
+    .stats-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .stat-card {
+      flex: 1;
+      background: #eef1f5;
+      border-radius: 8px;
+      padding: 8px 6px;
+      text-align: center;
+    }
+    .stat-card .num {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1e2a47;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-card .lbl {
+      font-size: 10px;
+      color: #5b6472;
+      margin-top: 2px;
+    }
+    .auto-capture {
+      background: #eef1f5;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .auto-capture-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .auto-capture-header label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1a2233;
+    }
+    .toggle-switch { position: relative; width: 36px; height: 20px; cursor: pointer; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0; background: #d3d8e2;
+      border-radius: 20px; transition: 0.2s;
+    }
+    .toggle-slider:before {
+      content: ''; position: absolute; height: 14px; width: 14px;
+      left: 3px; bottom: 3px; background: #fff;
+      border-radius: 50%; transition: 0.2s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background: #1e2a47; }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(16px); }
+    .run-info {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 8px; margin-top: 4px; font-size: 11px; color: #5b6472;
+    }
+    .run-info .duration {
+      font-weight: 600; color: #1e2a47; font-variant-numeric: tabular-nums;
+    }
+    .start-pause-btn {
+      width: 100%; margin-top: 8px;
+      background: #1e2a47; color: #fff; border: none;
+      border-radius: 6px; padding: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .start-pause-btn.paused { background: #16875a; }
+    .start-pause-btn.running { background: #c0453a; }
+    .capture-stats {
+      font-size: 11px; color: #5b6472;
+      margin-top: 6px; text-align: center;
+    }
+    .btn-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    button {
+      flex: 1; background: #1e2a47; color: #fff; border: none;
+      border-radius: 8px; padding: 10px 8px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #16213a; }
+    button:disabled { background: #d3d8e2; color: #8a92a0; cursor: not-allowed; }
+    .btn-export { background: #16875a; }
+    .btn-export:hover { background: #106848; }
+    .btn-reset { background: #c0453a; }
+    .btn-reset:hover { background: #9c372e; }
+    .tabs { display: flex; border-bottom: 2px solid #e7eaf1; margin-bottom: 8px; }
+    .tab {
+      flex: 1; background: none; color: #5b6472; border: none; border-radius: 0;
+      padding: 8px 4px; font-size: 11px; font-weight: 600; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+    }
+    .tab.active { color: #1e2a47; border-bottom-color: #1e2a47; }
+    .tab:hover { background: #eef1f5; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .section { margin-bottom: 12px; }
+    .section-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      color: #5b6472; letter-spacing: 0.4px;
+      margin-bottom: 4px; padding: 0 2px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .section-title .pill {
+      background: #e9edf5; color: #1e2a47;
+      border-radius: 10px; padding: 1px 7px;
+      font-size: 10px; font-weight: 600;
+    }
+    .section-title .copy-all {
+      margin-left: auto; background: transparent; color: #1e2a47;
+      border: 1px solid #e9edf5; border-radius: 6px;
+      font-size: 10px; padding: 2px 6px; cursor: pointer; flex: 0;
+    }
+    .section-title .copy-all:hover { background: #e9edf5; }
+    .list-box {
+      max-height: 400px; overflow-y: auto;
+      border: 1px solid #e7eaf1; border-radius: 6px;
+    }
+    #topList, #allList { max-height: 200px; overflow-y: auto; }
+    .trend-item {
+      padding: 6px 10px; border-bottom: 1px solid #e7eaf1;
+      font-size: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .trend-item:last-child { border-bottom: none; }
+    .trend-num { color: #1e2a47; font-weight: 700; font-size: 12px; min-width: 20px; }
+    .trend-count {
+      background: #e9edf5; color: #1e2a47;
+      border-radius: 10px; padding: 2px 8px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .copy-btn {
+      background: transparent; border: none; padding: 2px 4px; flex: 0;
+      cursor: pointer; font-size: 13px; opacity: 0.55;
+    }
+    .copy-btn:hover { opacity: 1; background: #e9edf5; border-radius: 4px; }
+    .trend-query { flex: 1; word-break: break-word; }
+    .empty { text-align: center; color: #8a92a0; font-size: 12px; padding: 14px 0; }
+    .instructions {
+      font-size: 11px; color: #5b6472;
+      padding: 10px 16px; border-top: 1px solid #e7eaf1; line-height: 1.5;
+    }
+    .instructions strong { color: #1a2233; }
+    .sheet-box {
+      background: #eef1f5; border-radius: 8px; padding: 10px; margin-bottom: 10px;
+      border: 1px solid #e7eaf1;
+    }
+    .sheet-box .row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .sheet-box label { font-size: 12px; font-weight: 600; color: #1a2233; }
+    .sheet-box input[type="text"] {
+      width: 100%; padding: 6px 8px; border: 1px solid #d3d8e2;
+      border-radius: 6px; font-size: 11px; margin-bottom: 6px;
+      font-family: monospace;
+    }
+    .sheet-box .btn-row-mini { display: flex; gap: 6px; }
+    .sheet-box .btn-row-mini button {
+      flex: 1; padding: 6px; font-size: 11px; border-radius: 6px;
+    }
+    .sheet-box .btn-save { background: #5b6472; }
+    .sheet-box .btn-save:hover { background: #3a4356; }
+    .sheet-box .btn-sync { background: #16875a; }
+    .sheet-box .btn-sync:hover { background: #0e6b46; }
+    .sheet-box .help-toggle {
+      background: transparent; color: #1e2a47; border: none;
+      font-size: 11px; cursor: pointer; padding: 4px 0; text-align: left;
+      width: auto; margin-top: 6px;
+    }
+    .sheet-box .help-toggle:hover { background: transparent; text-decoration: underline; }
+    .sheet-box .help-body {
+      display: none; margin-top: 8px; font-size: 11px; color: #3a4356;
+      background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #e7eaf1;
+      line-height: 1.5;
+    }
+    .sheet-box .help-body.open { display: block; }
+    .sheet-box .help-body ol { padding-left: 18px; margin: 4px 0; }
+    .sheet-box .help-body code, .sheet-box .help-body pre {
+      background: #e7eaf1; border-radius: 4px; padding: 1px 4px;
+      font-size: 10px; font-family: monospace;
+    }
+    .sheet-box .help-body pre {
+      display: block; padding: 8px; margin-top: 6px; white-space: pre-wrap;
+      max-height: 160px; overflow-y: auto;
+    }
+    .sheet-box .copy-script {
+      background: #1e2a47; color: #fff; border: none; border-radius: 4px;
+      padding: 4px 8px; font-size: 10px; cursor: pointer; margin-top: 4px; width: auto;
+    }
+    .sheet-status { font-size: 10px; color: #5b6472; margin-top: 4px; min-height: 12px; }
+    .sheet-status.ok { color: #0e6b46; }
+    .sheet-status.err { color: #9c372e; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <button class="close-btn" id="popupCloseBtn" title="Close popup">✕</button>
+    <h1>📋 Trending Searches V4</h1>
+    <p>Capture · Track · Export · CAT Time</p>
+    <div class="tz">🕒 <span id="catTime">--:--:--</span> CAT (Harare/Pretoria)</div>
+  </div>
+  <div class="content">
+    <div id="status" class="status">Checking page...</div>
+
+    <div class="stats-bar">
+      <div class="stat-card"><div class="num" id="statTotal">0</div><div class="lbl">Total captures</div></div>
+      <div class="stat-card"><div class="num" id="statScans">0</div><div class="lbl">Scans</div></div>
+      <div class="stat-card"><div class="num" id="statUnique">0</div><div class="lbl">Unique queries</div></div>
+      <div class="stat-card"><div class="num" id="statNew">0</div><div class="lbl">New entries</div></div>
+    </div>
+
+    <div class="auto-capture">
+      <div class="auto-capture-header">
+        <label>⚡ Auto-Capture (requires an open Google tab)</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="autoToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <button id="startPauseBtn" class="start-pause-btn paused">▶ Start</button>
+      <div class="run-info">
+        <span>Run duration: <span class="duration" id="runDuration">00:00:00</span></span>
+        <span>Cycles: <strong id="cyclesCount">0</strong></span>
+      </div>
+      <div class="capture-stats" id="captureStats"></div>
+    </div>
+
+    <div class="btn-row">
+      <button id="copyBtn" disabled>📋 Copy</button>
+      <button id="exportBtn" class="btn-export">📥 Excel</button>
+    </div>
+    <div class="btn-row">
+      <button id="resetDataBtn" class="btn-reset">🗑 Reset Captured Data</button>
+    </div>
+
+    <div class="sheet-box">
+      <div class="row1">
+        <label>📊 Google Sheet sync</label>
+      </div>
+      <input type="text" id="sheetUrlInput" placeholder="Paste Apps Script Web App /exec URL..." />
+      <div class="btn-row-mini">
+        <button id="saveSheetUrl" class="btn-save">💾 Save URL</button>
+        <button id="syncSheetNow" class="btn-sync">⬆ Sync now</button>
+      </div>
+      <div style="font-size:10px;color:#5b6472;margin-top:6px;">Auto-syncs every 5 seconds while the dashboard is open.</div>
+      <div class="sheet-status" id="sheetStatus"></div>
+      <button class="help-toggle" id="helpToggle">▸ How to set up the Google Sheet</button>
+      <div class="help-body" id="helpBody">
+        <ol>
+          <li>Create a new <strong>Google Sheet</strong>.</li>
+          <li>Open <strong>Extensions → Apps Script</strong>.</li>
+          <li>Replace the default code with the script below, then click <strong>Save</strong>.</li>
+          <li>Click <strong>Deploy → New deployment → Web app</strong>.</li>
+          <li>Set <strong>Execute as: Me</strong>, <strong>Who has access: Anyone</strong>.</li>
+          <li>Click <strong>Deploy</strong>, copy the <code>/exec</code> URL, paste it above and click <strong>Save URL</strong>.</li>
+        </ol>
+        <button class="copy-script" id="copyScriptBtn">📋 Copy script</button>
+        <pre id="scriptCode">function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const SHEETS = ['All Captured Queries','New Entries','Rising Queries','Dying Queries','Published Queries'];
+  // Ensure all 5 sheets exist
+  SHEETS.forEach(name => { if (!ss.getSheetByName(name)) ss.insertSheet(name); });
+
+  function writeQuery(sheetName, rows, meta) {
+    const s = ss.getSheetByName(sheetName);
+    s.clear();
+    let r = 1;
+    if (meta) { s.getRange(r,1,1,2).setValues([['Exported (CAT)', meta]]); r++; }
+    s.getRange(r,1,1,3).setValues([['Rank','Search Query','Times Seen']]); r++;
+    if (rows && rows.length) {
+      const vals = rows.map(x => [x.rank, x.query, x.count]);
+      s.getRange(r,1,vals.length,3).setValues(vals);
+    }
+  }
+
+  if (data.action === 'reset') {
+    SHEETS.forEach(n => ss.getSheetByName(n).clear());
+    return ContentService.createTextOutput(JSON.stringify({ ok:true, reset:true }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (data.action === 'publish') {
+    const s = ss.getSheetByName('Published Queries');
+    // Ensure headers in A1:B1
+    if (s.getRange(1,1).getValue() === '') s.getRange(1,1).setValue('Published Query');
+    if (s.getRange(1,2).getValue() === '') s.getRange(1,2).setValue('Published At (CAT)');
+    // Find first empty row in column A
+    const colA = s.getRange('A:A').getValues();
+    let nextRow = 0;
+    for (let i = 0; i < colA.length; i++) {
+      if (colA[i][0] === '' || colA[i][0] === null) { nextRow = i + 1; break; }
+    }
+    if (nextRow === 0) nextRow = colA.length + 1;
+    // Write query + timestamp so Make.com "Watch Changes" detects a new row
+    const tsCAT = Utilities.formatDate(new Date(), 'Africa/Harare', 'dd/MM/yyyy HH:mm:ss') + ' CAT';
+    s.getRange(nextRow, 1, 1, 2).setValues([[data.query, tsCAT]]);
+    // Force Sheets to commit the write so external integrations detect the new row
+    SpreadsheetApp.flush();
+    return ContentService.createTextOutput(JSON.stringify({ ok:true, published:data.query, row:nextRow }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // Default: bucketSync — refresh the 4 query sheets, leave Published untouched
+  writeQuery('All Captured Queries', data.all || [], data.exportedAtCAT);
+  writeQuery('New Entries', data.newEntries || []);
+  writeQuery('Rising Queries', data.rising || []);
+  writeQuery('Dying Queries', data.dying || []);
+  // Ensure Published header exists but never wipe it
+  const pub = ss.getSheetByName('Published Queries');
+  if (pub.getRange(1,1).getValue() === '') pub.getRange(1,1).setValue('Published Query');
+
+  return ContentService.createTextOutput(JSON.stringify({ ok:true }))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="current">🆕 New Entries</div>
+      <div class="tab" data-tab="top10">🏆 Top 10</div>
+      <div class="tab" data-tab="all">All History</div>
+    </div>
+    <div id="panelCurrent" class="panel active">
+      <div class="section">
+        <div class="section-title">
+          🆕 New Entries (latest 10)
+          <span class="pill" id="newPill">0</span>
+          <button class="copy-all" id="copyNewAll">Copy all</button>
+        </div>
+        <div class="list-box" id="newEntriesList"><div class="empty">No new entries yet</div></div>
+      </div>
+    </div>
+    <div id="panelTop10" class="panel">
+      <div id="topList"><div class="empty">No data yet</div></div>
+    </div>
+    <div id="panelAll" class="panel">
+      <div id="allList"><div class="empty">No data yet</div></div>
+    </div>
+  </div>
+  <div class="instructions">
+    <strong>How to use:</strong> Go to google.com → click search bar → click <strong>📋 Copy</strong> or enable <strong>⚡ Auto-Capture</strong>. Excel exports overwrite the same daily file.
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
