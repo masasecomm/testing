@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Trending Searches V4 — Main Dashboard</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+    margin: 0;
+    background: linear-gradient(160deg, #eef0f3 0%, #e1e4ea 45%, #d6dae2 100%);
+    background-attachment: fixed;
+    color: #232b3d;
+    min-height: 100vh;
+  }
+  header {
+    background: linear-gradient(120deg, #1e2a47 0%, #16213a 100%);
+    padding: 20px 32px;
+    border-bottom: 1px solid #0f1626;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    box-shadow: 0 2px 10px rgba(20,28,50,0.25);
+  }
+  header h1 {
+    margin: 0;
+    font-size: 22px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .clock {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    color: #eef1f5;
+    background: rgba(255,255,255,0.12);
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.18);
+  }
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .btn {
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-primary { background: #1e2a47; color: white; }
+  .btn-primary:hover { background: #16213a; }
+  .btn-success { background: #16875a; color: white; }
+  .btn-success:hover { background: #106848; }
+  .btn-danger { background: #c0453a; color: white; }
+  .btn-danger:hover { background: #9c372e; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .stat {
+    background: #ffffff;
+    border: 1px solid #dde1e9;
+    border-radius: 10px;
+    padding: 18px;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .stat-val { font-size: 28px; font-weight: 700; color: #1e2a47; }
+  .stat-label { font-size: 12px; color: #5b6472; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 18px;
+    margin-bottom: 28px;
+  }
+  .card {
+    background: #ffffff;
+    border: 1px solid #dde1e9;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .card-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid #dde1e9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: #1a2233; }
+  .pill {
+    background: #dde1e9;
+    color: #3a4356;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .pill-rising { background: #e1f2ea; color: #0e6b46; }
+  .pill-dying { background: #f6e2df; color: #9c372e; }
+  .pill-new { background: #e3e7f5; color: #29365c; }
+  .copy-all-btn {
+    background: transparent; border: 1px solid #d3d8e2; color: #1e2a47;
+    border-radius: 6px; padding: 4px 10px; font-size: 11px;
+    cursor: pointer; font-weight: 600;
+  }
+  .copy-all-btn:hover { background: #e9edf5; }
+  .settings-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 18px;
+    align-items: start;
+  }
+  @media (max-width: 980px) {
+    .settings-row { grid-template-columns: 1fr; }
+  }
+  .card-compact .card-head { padding: 8px 12px; }
+  .card-compact .card-title { font-size: 12px; }
+  .card-compact .card-body-inner { padding: 10px 12px; }
+  .settings-hint {
+    font-size: 10.5px;
+    color: #5b6472;
+    line-height: 1.4;
+    margin-bottom: 7px;
+  }
+  .settings-msg { font-size: 10.5px; color: #5b6472; min-height: 14px; margin-top: 4px; }
+  .settings-textarea-sm {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-family: monospace;
+    resize: vertical;
+  }
+  .settings-btn-sm { padding: 5px 10px; font-size: 11px; }
+
+  .wh-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .wh-row .wh-url {
+    flex: 1;
+    min-width: 0;
+    padding: 5px 7px;
+    font-size: 11px;
+    font-family: monospace;
+    border: 1px solid #d3d8e2;
+    border-radius: 5px;
+  }
+  .wh-row .wh-enabled { cursor: pointer; flex: 0 0 auto; }
+  .wh-icon-btn {
+    border: none;
+    border-radius: 5px;
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e9edf5;
+    color: #1e2a47;
+    flex: 0 0 auto;
+  }
+  .wh-icon-btn:hover { background: #dde3f0; }
+  .wh-icon-btn.wh-del { background: #f6e2df; color: #9c372e; }
+  .wh-icon-btn.wh-del:hover { background: #f0c9c2; }
+  .wh-add-btn {
+    width: 100%;
+    text-align: center;
+    padding: 6px;
+    border: 1px dashed #ccd4e6;
+    border-radius: 6px;
+    background: transparent;
+    color: #1e2a47;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 2px;
+  }
+  .wh-add-btn:hover { background: #e9edf5; }
+  .wh-empty { font-size: 10.5px; color: #8a92a0; padding: 4px 0 8px; }
+  .two-col-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+    align-items: start;
+  }
+  @media (max-width: 980px) {
+    .two-col-row { grid-template-columns: 1fr; }
+  }
+  .card-body { max-height: 400px; overflow-y: auto; }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-bottom: 1px solid #e7eaf1;
+    font-size: 13px;
+  }
+  .row:hover { background: #eef1f5; }
+  .num { width: 28px; color: #8a92a0; font-weight: 600; font-size: 12px; }
+  .q { flex: 1; color: #232b3d; }
+  .count { color: #5b6472; font-weight: 600; font-size: 12px; }
+  .delta { font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; }
+  .delta-up { background: #e1f2ea; color: #0e6b46; }
+  .delta-down { background: #f6e2df; color: #9c372e; }
+  .copy-btn {
+    background: transparent; border: none; padding: 2px 6px;
+    cursor: pointer; font-size: 14px; opacity: 0.6;
+  }
+  .copy-btn:hover { opacity: 1; background: #e9edf5; border-radius: 4px; }
+  .empty { padding: 30px; text-align: center; color: #8a92a0; font-size: 13px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 13px;
+    border-bottom: 1px solid #e7eaf1;
+  }
+  th {
+    background: #eef1f5;
+    color: #5b6472;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+  }
+  tr:hover td { background: #eef1f5; }
+  .table-wrap { max-height: 600px; overflow-y: auto; overflow-x: auto; }
+  #dataTable { min-width: 560px; }
+
+  .search-input {
+    background: #ffffff;
+    border: 1px solid #d3d8e2;
+    color: #232b3d;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    width: 280px;
+  }
+  .search-input:focus { outline: none; border-color: #1e2a47; }
+
+  .live-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #16875a;
+    margin-right: 6px;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .row { cursor: pointer; }
+  .clickable-row { cursor: pointer; }
+
+  /* Modal */
+  .modal { position: fixed; inset: 0; display: none; z-index: 9999; }
+  .modal.open { display: block; }
+  .modal-backdrop { position: absolute; inset: 0; background: rgba(15,23,42,0.45); }
+  .modal-card {
+    position: relative; max-width: 520px; margin: 80px auto; background: #fff;
+    border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    overflow: hidden; border: 1px solid #dde1e9;
+  }
+  .modal-head {
+    padding: 16px 20px; border-bottom: 1px solid #dde1e9;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    background: #eef1f5;
+  }
+  .modal-head h3 { margin: 0; font-size: 16px; color: #1a2233; word-break: break-word; }
+  .modal-close {
+    background: transparent; border: none; font-size: 20px; cursor: pointer;
+    color: #5b6472; padding: 4px 8px; border-radius: 6px;
+  }
+  .modal-close:hover { background: #dde1e9; }
+  .modal-body { padding: 18px 20px; }
+  .stat-row {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 8px 0; border-bottom: 1px solid #e7eaf1; font-size: 13px;
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row span { color: #5b6472; }
+  .stat-row strong { color: #1a2233; text-align: right; }
+  .modal-actions {
+    padding: 14px 20px; border-top: 1px solid #dde1e9; background: #eef1f5;
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+  .modal-actions button {
+    padding: 9px 18px; border: none; border-radius: 8px; cursor: pointer;
+    font-weight: 600; font-size: 13px;
+  }
+  .btn-modal-copy { background: #1e2a47; color: #fff; }
+  .btn-modal-copy:hover { background: #16213a; }
+  .btn-modal-publish { background: #16875a; color: #fff; }
+  .btn-modal-publish:hover { background: #106848; }
+  .btn-modal-publish:disabled { background: #d3d8e2; color: #5b6472; cursor: not-allowed; }
+
+  .modal-chart-wrap { padding: 0 20px 16px; }
+  .modal-chart-title { font-size: 12px; font-weight: 700; color: #3a4356; margin-bottom: 6px; }
+  .query-chart-svg { display: block; }
+  .chart-dot { fill: #1e2a47; }
+  .chart-caption { font-size: 10.5px; color: #8a92a0; margin-top: 4px; }
+  body.dark-mode .modal-chart-title { color: #b7bfcf; }
+  body.dark-mode .chart-caption { color: #6b7385; }
+  body.dark-mode .chart-dot { fill: #6fa8ff; }
+
+  /* ---------- header extras ---------- */
+  .theme-toggle-btn {
+    background: rgba(255,255,255,0.12);
+    color: #eef1f5;
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .theme-toggle-btn:hover { background: rgba(255,255,255,0.22); }
+
+  .capture-badge {
+    font-size: 11px;
+    color: #0e6b46;
+    background: #e1f2ea;
+    border: 1px solid #cfe9dd;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+  .capture-badge.stale { color: #9c372e; background: #f6e2df; border-color: #f0c9c2; }
+
+  .capture-status-badge {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5b6472;
+    background: #e7eaf1;
+    border: 1px solid #d3d8e2;
+    padding: 5px 12px;
+    border-radius: 999px;
+  }
+  .capture-status-badge.running { color: #0e6b46; background: #e1f2ea; border-color: #cfe9dd; }
+
+  /* ---------- sortable table headers ---------- */
+  #dataTable th[data-sort] { cursor: pointer; user-select: none; white-space: nowrap; }
+  #dataTable th[data-sort]:hover { color: #1e2a47; }
+  .sort-arrow { font-size: 9px; color: #8a92a0; margin-left: 2px; }
+  .sort-arrow.active { color: #1e2a47; }
+
+  /* ---------- webhook row: label + status line ---------- */
+  .wh-row-wrap { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #e7eaf1; }
+  .wh-row-wrap:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .wh-row .wh-label {
+    width: 74px;
+    flex: 0 0 auto;
+    padding: 5px 6px;
+    font-size: 10.5px;
+    border: 1px solid #d3d8e2;
+    border-radius: 5px;
+  }
+  .wh-status { font-size: 10px; color: #8a92a0; margin-top: 3px; padding-left: 2px; }
+  .wh-status.ok { color: #0e6b46; }
+  .wh-status.fail { color: #9c372e; }
+
+  /* ============================================================
+     Dark mode — toggled via body.dark-mode
+     ============================================================ */
+  body.dark-mode {
+    background: linear-gradient(160deg, #12161f 0%, #171c28 45%, #1b2130 100%);
+    color: #d7dce6;
+  }
+  body.dark-mode .card {
+    background: #1a2030;
+    border-color: #2a3247;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
+  body.dark-mode .card-head {
+    background: #1a2030 !important;
+    border-bottom-color: #2a3247;
+  }
+  body.dark-mode .card-title { color: #eef1f5; }
+  body.dark-mode .card-body-inner { color: #b7bfcf; }
+  body.dark-mode .settings-hint,
+  body.dark-mode .settings-msg,
+  body.dark-mode .wh-status { color: #8b93a7; }
+  body.dark-mode .row:hover,
+  body.dark-mode tr.clickable-row:hover { background: #212840; }
+  body.dark-mode .empty { color: #6b7385; }
+  body.dark-mode .q, body.dark-mode .num, body.dark-mode .count { color: #d7dce6; }
+  body.dark-mode table { color: #d7dce6; }
+  body.dark-mode thead { background: #1a2030; color: #8b93a7; }
+  body.dark-mode td, body.dark-mode th { border-color: #2a3247 !important; }
+  body.dark-mode tbody tr:hover { background: #212840; }
+  body.dark-mode input,
+  body.dark-mode textarea {
+    background: #12161f;
+    color: #d7dce6;
+    border-color: #2a3247 !important;
+  }
+  body.dark-mode input::placeholder,
+  body.dark-mode textarea::placeholder { color: #545d72; }
+  body.dark-mode .wh-icon-btn { background: #232b40; color: #aab3c8; }
+  body.dark-mode .wh-icon-btn.wh-del { background: #3a2530; color: #e0958a; }
+  body.dark-mode .wh-add-btn { border-color: #2a3247; color: #aab3c8; }
+  body.dark-mode .wh-add-btn:hover { background: #212840; }
+  body.dark-mode .wh-empty { color: #6b7385; }
+  body.dark-mode .copy-all-btn { border-color: #2a3247; color: #aab3c8; }
+  body.dark-mode .copy-all-btn:hover { background: #212840; }
+  body.dark-mode .stat { background: #1a2030; border-color: #2a3247; }
+  body.dark-mode .stat-val { color: #eef1f5; }
+  body.dark-mode .stat-label { color: #8b93a7; }
+  body.dark-mode .modal-card { background: #1a2030; color: #d7dce6; }
+  body.dark-mode .modal-head { border-bottom-color: #2a3247; }
+  body.dark-mode .modal-head h3 { color: #eef1f5; }
+  body.dark-mode .stat-row { border-bottom-color: #2a3247; color: #b7bfcf; }
+  body.dark-mode .stat-row span { color: #8b93a7; }
+  body.dark-mode .stat-row strong { color: #eef1f5; }
+  body.dark-mode .modal-backdrop { background: rgba(0,0,0,0.55); }
+  body.dark-mode .capture-badge { background: #16342a; color: #6fd3a8; border-color: #204a3b; }
+  body.dark-mode .capture-badge.stale { background: #3a2019; color: #e0958a; border-color: #4a2b23; }
+  body.dark-mode .capture-status-badge { background: #1a2030; color: #8b93a7; border-color: #2a3247; }
+  body.dark-mode .capture-status-badge.running { background: #16342a; color: #6fd3a8; border-color: #204a3b; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>📊 Trending Searches V4 <span class="live-dot"></span></h1>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="theme-toggle-btn" id="themeToggleBtn" title="Toggle dark mode">🌙 Dark</button>
+      <div class="clock" id="catTime">--:--:--</div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="actions">
+      <button class="btn btn-success" id="startPauseBtnMain">▶ Start Capturing</button>
+      <button class="btn btn-success" id="exportBtn">📥 Download Excel</button>
+      <button class="btn btn-primary" id="syncSheetBtn">📊 Sync to Google Sheet</button>
+      <button class="btn" id="purgeBtn" style="background:#c9962e;color:#fff;">🗂 Purge Old Data</button>
+      <button class="btn btn-danger" id="resetSheetBtn">🧹 Reset Google Sheet</button>
+      <button class="btn btn-danger" id="resetBtn">🗑 Reset All Data</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:-12px 0 16px 2px;">
+      <span id="captureStatusMain" class="capture-status-badge">⏸ Auto-capture paused</span>
+      <span id="captureTimerMain" class="capture-status-badge" title="Time actively spent capturing since this session started — does not count time while the tab was frozen">⏱ 00:00:00</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:-12px 0 16px 2px;">
+      <label style="font-size:12px;color:#3a4356;display:inline-flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="autoSyncToggleMain" style="cursor:pointer;" />
+        Auto-sync every
+        <input type="number" id="autoSyncMinutesMain" min="1" max="1440" step="1" value="5"
+          style="width:60px;padding:4px 6px;border:1px solid #d3d8e2;border-radius:6px;font-size:12px;text-align:center;font-family:monospace;" />
+        min
+      </label>
+      <span id="nextSyncInfo" style="font-size:11px;color:#5b6472;font-variant-numeric:tabular-nums;"></span>
+      <span id="lastCaptureBadge" class="capture-badge">⏳ No captures yet</span>
+    </div>
+    <div id="sheetMsg" style="font-size:12px;color:#5b6472;margin:0 0 4px 2px;min-height:16px;"></div>
+    <div id="purgeMsg" style="font-size:12px;color:#5b6472;margin:0 0 16px 2px;min-height:16px;"></div>
+
+
+    <div class="settings-row">
+      <div class="card card-compact" style="border-color:#ccd4e6;">
+        <div class="card-head" style="background:#e9edf5;">
+          <div class="card-title">🔗 Webhooks <span class="pill" id="makeWebhookPill" style="background:#dde3f0;color:#29365c;">Not configured</span></div>
+        </div>
+        <div class="card-body-inner">
+          <div class="settings-hint">Fires on every Publish (manual or auto), in parallel with Sheet sync.</div>
+          <div id="webhookList"></div>
+          <button class="wh-add-btn" id="webhookAddBtn">+ Add webhook</button>
+          <div id="makeWebhookMsg" class="settings-msg"></div>
+        </div>
+      </div>
+
+      <div class="card card-compact">
+        <div class="card-head">
+          <div class="card-title">⚡ Auto-Publish <span class="pill" id="autoPubCount" style="background:#f5e9d0;color:#8a5a12;">0 keywords</span></div>
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#3a4356;cursor:pointer;">
+            <input type="checkbox" id="autoPublishToggle" style="cursor:pointer;" />
+            On
+          </label>
+        </div>
+        <div class="card-body-inner">
+          <div class="settings-hint">Matching queries auto-publish. One phrase per line.</div>
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:#3a4356;cursor:pointer;margin-bottom:5px;">
+            <input type="checkbox" id="autoPublishWholeWord" style="cursor:pointer;" />
+            Whole-word match only
+          </label>
+          <textarea id="autoPublishKeywords" placeholder="trump&#10;election&#10;ai" rows="2"
+            class="settings-textarea-sm" style="border:1px solid #d3d8e2;display:block;"></textarea>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+            <button class="btn btn-primary settings-btn-sm" id="autoPublishSaveBtn">💾 Save</button>
+            <button class="btn settings-btn-sm" id="autoPublishScanBtn" style="background:#c9962e;color:#fff;">🔍 Scan now</button>
+          </div>
+          <div id="autoPublishMsg" class="settings-msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-val" id="sTotal">0</div><div class="stat-label">Total Queries Captured</div></div>
+      <div class="stat"><div class="stat-val" id="sScans">0</div><div class="stat-label">Scans</div></div>
+      <div class="stat"><div class="stat-val" id="sUnique">0</div><div class="stat-label">Unique Queries</div></div>
+      <div class="stat"><div class="stat-val" id="sNew">0</div><div class="stat-label">New Entries Found</div></div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">🆕 New Entries <span class="pill pill-new" id="newCount">0</span></div>
+          <button class="copy-all-btn" data-copy="new">Copy all</button>
+        </div>
+        <div class="card-body" id="newList"><div class="empty">No new queries yet</div></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">📈 Rising Queries <span class="pill pill-rising" id="risingCount">0</span></div>
+          <button class="copy-all-btn" data-copy="rising">Copy all</button>
+        </div>
+        <div class="card-body" id="risingList"><div class="empty">No rising queries yet</div></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">📉 Dying Queries <span class="pill pill-dying" id="dyingCount">0</span></div>
+          <button class="copy-all-btn" data-copy="dying">Copy all</button>
+        </div>
+        <div class="card-body" id="dyingList"><div class="empty">No dying queries yet</div></div>
+      </div>
+    </div>
+
+    <div class="two-col-row">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">🗂 All Captured Queries (Excel preview)</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="copy-all-btn" data-copy="all">Copy all</button>
+            <button class="copy-all-btn" id="csvExportBtn">⬇ CSV</button>
+            <input type="text" class="search-input" id="searchInput" placeholder="Search queries..." />
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="dataTable">
+            <thead>
+              <tr>
+                <th data-sort="rank">#</th>
+                <th data-sort="query">Query <span class="sort-arrow"></span></th>
+                <th data-sort="count">Times Seen <span class="sort-arrow"></span></th>
+                <th data-sort="recent">Recent (last 15 cycles) <span class="sort-arrow"></span></th>
+                <th data-sort="trend">Trend <span class="sort-arrow"></span></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">📤 Published Queries <span class="pill" id="publishedCount" style="background:#dde6f5;color:#1e2a47;">0</span></div>
+          <button class="copy-all-btn" data-copy="published">Copy all</button>
+        </div>
+        <div class="card-body" id="publishedList"><div class="empty">No published queries yet — click any query and press Publish.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Query stats modal -->
+  <div class="modal" id="queryModal">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modalQuery">Query</h3>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body" id="modalStats"></div>
+      <div class="modal-chart-wrap">
+        <div class="modal-chart-title">📈 Times seen over time</div>
+        <div id="modalChart"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-modal-copy" id="modalCopyBtn">📋 Copy</button>
+        <button class="btn-modal-publish" id="modalPublishBtn">📤 Publish</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
