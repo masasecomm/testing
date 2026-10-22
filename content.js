@@ -97,6 +97,7 @@
         newEntries: [],
         evictedFromFeed: [],
         timestampEntries: [],
+        lastSheetSyncScanCount: 0,
       }, data => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
@@ -106,7 +107,9 @@
         const now = new Date().toISOString();
         const scanIdx = (data.scanCount || 0) + 1;
         let feed = data.newEntries || [];
-        const timestampEntries = data.timestampEntries || [];
+        const lastSyncedScan = data.lastSheetSyncScanCount || 0;
+        const timestampEntries = (data.timestampEntries || [])
+          .filter(entry => entry.scan > lastSyncedScan);
         const evicted = new Set(data.evictedFromFeed || []);
         trends.forEach(q => {
           const isFirstTime = !history[q];
@@ -147,12 +150,12 @@
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async function waitForTrends(timeoutMs = 1000) {
+  async function waitForTrends(timeoutMs = 500) {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       const trends = getTrendingSearches();
       if (trends.length > 0) return trends;
-      await delay(50);
+      await delay(150);
     }
     return [];
   }
@@ -186,7 +189,7 @@
           console.error('[GTS] capture error', error);
         }
 
-        await delay(100);
+        await delay(1500);
       }
     } finally {
       captureLoopRunning = false;

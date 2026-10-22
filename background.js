@@ -50,7 +50,8 @@ function buildSheetPayload(data) {
       byQuery.get(entry.query) || { query: entry.query, count: 1 })),
     rising: toRows(rising),
     dying: toRows(dying),
-    timestampEntries: data.timestampEntries || [],
+    timestampEntries: (data.timestampEntries || [])
+      .filter(entry => entry.scan > (data.lastSheetSyncScanCount || 0)),
   };
 }
 
@@ -85,6 +86,11 @@ async function syncCapturedDataToSheet() {
         lastSheetSyncAt: Date.now(),
         lastSheetSyncScanCount: data.scanCount,
         lastSheetSyncError: '',
+      });
+      const current = await chrome.storage.local.get({ timestampEntries: [] });
+      await chrome.storage.local.set({
+        timestampEntries: (current.timestampEntries || [])
+          .filter(entry => entry.scan > data.scanCount),
       });
     }
   } catch (error) {
