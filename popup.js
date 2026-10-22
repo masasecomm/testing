@@ -1,6 +1,8 @@
 const resetDataBtn = document.getElementById('resetDataBtn');
 const sheetUrlInput = document.getElementById('sheetUrlInput');
 const saveSheetUrlBtn = document.getElementById('saveSheetUrl');
+const changeSheetUrlBtn = document.getElementById('changeSheetUrl');
+const sheetBox = sheetUrlInput.closest('.sheet-box');
 const sheetStatus = document.getElementById('sheetStatus');
 const captureToggle = document.getElementById('captureToggle');
 
@@ -47,8 +49,35 @@ captureToggle.addEventListener('click', async () => {
   captureToggle.disabled = true;
   try {
     const { autoCapture } = await getLocalData({ autoCapture: false });
-    await setLocalData({ autoCapture: !autoCapture });
-    updateCaptureButton(!autoCapture);
+    if (autoCapture) {
+      await setLocalData({ autoCapture: false, captureTabId: null });
+      updateCaptureButton(false);
+      return;
+    }
+
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || typeof tab.id !== 'number') {
+      throw new Error('Could not identify the active tab.');
+    }
+
+    await setLocalData({ autoCapture: true, captureTabId: tab.id, captureError: '' });
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js'],
+      });
+      updateCaptureButton(true);
+      setSheetStatus('✅ Scanning this tab for Google search suggestions.', 'ok');
+    } catch (error) {
+      await setLocalData({
+        autoCapture: false,
+        captureTabId: null,
+        captureError: error.message,
+      });
+      throw new Error(
+        'Chromium blocks extensions from injecting into this page (including chrome://newtab). Open a regular webpage with a Google search input and press Start there.',
+      );
+    }
   } catch (error) {
     setSheetStatus('❌ Could not change scanning state: ' + error.message, 'err');
   } finally {
@@ -108,18 +137,28 @@ saveSheetUrlBtn.addEventListener('click', async () => {
   }
   try {
     await setLocalData({ sheetWebhookUrl: url });
+    sheetBox.classList.toggle('url-saved', Boolean(url));
     setSheetStatus(url ? '✅ URL saved' : 'URL cleared', 'ok');
   } catch (error) {
     setSheetStatus('❌ Could not save the URL: ' + error.message, 'err');
   }
 });
 
+changeSheetUrlBtn.addEventListener('click', () => {
+  sheetBox.classList.remove('url-saved');
+  sheetUrlInput.focus();
+});
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   if (changes.autoCapture) updateCaptureButton(!!changes.autoCapture.newValue);
+  if (changes.captureError && changes.captureError.newValue) {
+    setSheetStatus('❌ Scanning stopped: ' + changes.captureError.newValue, 'err');
+  }
   if (changes.sheetWebhookUrl) {
     const value = changes.sheetWebhookUrl.newValue || '';
     if (document.activeElement !== sheetUrlInput) sheetUrlInput.value = value;
+    sheetBox.classList.toggle('url-saved', Boolean(value));
   }
   if (changes.lastSheetSyncError && changes.lastSheetSyncError.newValue) {
     setSheetStatus('❌ Automatic sync failed: ' + changes.lastSheetSyncError.newValue, 'err');
@@ -133,11 +172,13 @@ async function init() {
     const data = await getLocalData({
       sheetWebhookUrl: '',
       autoCapture: false,
+      captureError: '',
       lastSheetSyncAt: 0,
       lastSheetSyncError: '',
     });
     updateCaptureButton(data.autoCapture);
     sheetUrlInput.value = data.sheetWebhookUrl || '';
+    sheetBox.classList.toggle('url-saved', Boolean(data.sheetWebhookUrl));
     if (data.lastSheetSyncError) {
       setSheetStatus('❌ Last automatic sync failed: ' + data.lastSheetSyncError, 'err');
     } else if (data.lastSheetSyncAt) {

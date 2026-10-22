@@ -1,5 +1,8 @@
 // Trending Searches V4 - Content Script
 (function () {
+  if (globalThis.gtsCaptureInitialized) return;
+  globalThis.gtsCaptureInitialized = true;
+
   function getTrendingSearches() {
     const trends = [];
     const selectors = [
@@ -144,22 +147,14 @@
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async function waitForTrends(timeoutMs = 2000) {
+  async function waitForTrends(timeoutMs = 1000) {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       const trends = getTrendingSearches();
       if (trends.length > 0) return trends;
-      await delay(150);
+      await delay(50);
     }
     return [];
-  }
-
-  function clickOutsideSearch(input) {
-    input.blur();
-    const eventOptions = { bubbles: true, cancelable: true, view: window };
-    document.body.dispatchEvent(new MouseEvent('mousedown', eventOptions));
-    document.body.dispatchEvent(new MouseEvent('mouseup', eventOptions));
-    document.body.dispatchEvent(new MouseEvent('click', eventOptions));
   }
 
   let captureEnabled = false;
@@ -180,13 +175,18 @@
           input.focus();
           input.click();
           const trends = await waitForTrends();
-          if (captureEnabled && trends.length > 0) await saveTrendsToStorage(trends);
+          if (captureEnabled && trends.length > 0) {
+            await saveTrendsToStorage(trends);
+            if (captureEnabled) {
+              window.location.reload();
+              return;
+            }
+          }
         } catch (error) {
           console.error('[GTS] capture error', error);
         }
 
-        clickOutsideSearch(input);
-        await delay(30000);
+        await delay(100);
       }
     } finally {
       captureLoopRunning = false;

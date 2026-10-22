@@ -35,6 +35,11 @@
       border-radius: 6px; font-size: 11px; margin-bottom: 6px;
       font-family: monospace;
     }
+    .sheet-box .sheet-url-saved { display: none; }
+    .sheet-box.url-saved input[type="text"],
+    .sheet-box.url-saved #saveSheetUrl { display: none; }
+    .sheet-box.url-saved .btn-row-mini { display: flex; }
+    .sheet-box.url-saved .sheet-url-saved { display: inline-block; }
     .sheet-box .btn-row-mini { display: flex; gap: 6px; }
     .sheet-box .btn-row-mini button {
       flex: 1; padding: 6px; font-size: 11px; border-radius: 6px;
@@ -60,6 +65,7 @@
       <input type="text" id="sheetUrlInput" placeholder="Paste Apps Script Web App /exec URL..." />
       <div class="btn-row-mini">
         <button id="saveSheetUrl" class="btn-save">💾 Save URL</button>
+        <button id="changeSheetUrl" class="btn-save sheet-url-saved" type="button">Change URL</button>
       </div>
       <div class="sheet-status" id="sheetStatus"></div>
     </div>

@@ -105,3 +105,35 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
     syncCapturedDataToSheet();
   }
 });
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+  if (changeInfo.status !== 'complete') return;
+  const data = await chrome.storage.local.get({
+    autoCapture: false,
+    captureTabId: null,
+  });
+  if (!data.autoCapture || data.captureTabId !== tabId) return;
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['content.js'],
+    });
+  } catch (error) {
+    console.warn('[GTS] Could not restart capture after page load', error);
+    await chrome.storage.local.set({
+      autoCapture: false,
+      captureTabId: null,
+      captureError: 'Chromium blocked reinjection after this tab navigated. Press Start again on a regular webpage.',
+    });
+  }
+});
+
+chrome.tabs.onRemoved.addListener(async tabId => {
+  const data = await chrome.storage.local.get({ captureTabId: null });
+  if (data.captureTabId !== tabId) return;
+  await chrome.storage.local.set({
+    autoCapture: false,
+    captureTabId: null,
+  });
+});
