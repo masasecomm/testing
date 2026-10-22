@@ -2,10 +2,7 @@ const resetDataBtn = document.getElementById('resetDataBtn');
 const sheetUrlInput = document.getElementById('sheetUrlInput');
 const saveSheetUrlBtn = document.getElementById('saveSheetUrl');
 const sheetStatus = document.getElementById('sheetStatus');
-const helpToggle = document.getElementById('helpToggle');
-const helpBody = document.getElementById('helpBody');
-const copyScriptBtn = document.getElementById('copyScriptBtn');
-const scriptCode = document.getElementById('scriptCode');
+const captureToggle = document.getElementById('captureToggle');
 
 function setSheetStatus(message, kind = '') {
   sheetStatus.className = 'sheet-status ' + kind;
@@ -40,18 +37,22 @@ function formatCATTime(timestamp) {
   }).format(new Date(timestamp));
 }
 
-helpToggle.addEventListener('click', () => {
-  const open = helpBody.classList.toggle('open');
-  helpToggle.textContent = (open ? '▾' : '▸') + ' How to set up the Google Sheet';
-});
+function updateCaptureButton(isRunning) {
+  captureToggle.textContent = isRunning ? 'Pause' : 'Start';
+  captureToggle.classList.toggle('running', isRunning);
+  captureToggle.setAttribute('aria-pressed', String(isRunning));
+}
 
-copyScriptBtn.addEventListener('click', async () => {
+captureToggle.addEventListener('click', async () => {
+  captureToggle.disabled = true;
   try {
-    await navigator.clipboard.writeText(scriptCode.textContent);
-    copyScriptBtn.textContent = '✓ Copied';
-    setTimeout(() => { copyScriptBtn.textContent = '📋 Copy script'; }, 1200);
+    const { autoCapture } = await getLocalData({ autoCapture: false });
+    await setLocalData({ autoCapture: !autoCapture });
+    updateCaptureButton(!autoCapture);
   } catch (error) {
-    setSheetStatus('❌ Could not copy the setup script: ' + error.message, 'err');
+    setSheetStatus('❌ Could not change scanning state: ' + error.message, 'err');
+  } finally {
+    captureToggle.disabled = false;
   }
 });
 
@@ -72,6 +73,7 @@ resetDataBtn.addEventListener('click', async () => {
     }
 
     await setLocalData({
+      autoCapture: false,
       trendHistory: {},
       scanCount: 0,
       cycleCount: 0,
@@ -114,6 +116,7 @@ saveSheetUrlBtn.addEventListener('click', async () => {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
+  if (changes.autoCapture) updateCaptureButton(!!changes.autoCapture.newValue);
   if (changes.sheetWebhookUrl) {
     const value = changes.sheetWebhookUrl.newValue || '';
     if (document.activeElement !== sheetUrlInput) sheetUrlInput.value = value;
@@ -129,9 +132,11 @@ async function init() {
   try {
     const data = await getLocalData({
       sheetWebhookUrl: '',
+      autoCapture: false,
       lastSheetSyncAt: 0,
       lastSheetSyncError: '',
     });
+    updateCaptureButton(data.autoCapture);
     sheetUrlInput.value = data.sheetWebhookUrl || '';
     if (data.lastSheetSyncError) {
       setSheetStatus('❌ Last automatic sync failed: ' + data.lastSheetSyncError, 'err');

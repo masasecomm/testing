@@ -162,27 +162,50 @@
     document.body.dispatchEvent(new MouseEvent('click', eventOptions));
   }
 
+  let captureEnabled = false;
+  let captureLoopRunning = false;
+
   async function runCaptureLoop() {
-    while (true) {
-      const input = getSearchInput();
-      if (!input) {
-        await delay(2000);
-        continue;
-      }
+    if (captureLoopRunning) return;
+    captureLoopRunning = true;
+    try {
+      while (captureEnabled) {
+        const input = getSearchInput();
+        if (!input) {
+          await delay(2000);
+          continue;
+        }
 
-      try {
-        input.focus();
-        input.click();
-        const trends = await waitForTrends();
-        if (trends.length > 0) await saveTrendsToStorage(trends);
-      } catch (error) {
-        console.error('[GTS] capture error', error);
-      }
+        try {
+          input.focus();
+          input.click();
+          const trends = await waitForTrends();
+          if (captureEnabled && trends.length > 0) await saveTrendsToStorage(trends);
+        } catch (error) {
+          console.error('[GTS] capture error', error);
+        }
 
-      clickOutsideSearch(input);
-      await delay(30000);
+        clickOutsideSearch(input);
+        await delay(30000);
+      }
+    } finally {
+      captureLoopRunning = false;
+      if (captureEnabled) runCaptureLoop();
     }
   }
 
-  setTimeout(runCaptureLoop, 800);
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes.autoCapture) return;
+    captureEnabled = !!changes.autoCapture.newValue;
+    if (captureEnabled) runCaptureLoop();
+  });
+
+  chrome.storage.local.get({ autoCapture: false }, data => {
+    if (chrome.runtime.lastError) {
+      console.error('[GTS] could not read capture state', chrome.runtime.lastError);
+      return;
+    }
+    captureEnabled = data.autoCapture;
+    if (captureEnabled) runCaptureLoop();
+  });
 })();
