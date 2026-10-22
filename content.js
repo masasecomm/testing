@@ -88,7 +88,13 @@
   function saveTrendsToStorage(trends) {
     if (!trends.length) return Promise.resolve();
     return new Promise((resolve, reject) => {
-      chrome.storage.local.get({ trendHistory: {}, scanCount: 0, newEntries: [], evictedFromFeed: [] }, data => {
+      chrome.storage.local.get({
+        trendHistory: {},
+        scanCount: 0,
+        newEntries: [],
+        evictedFromFeed: [],
+        timestampEntries: [],
+      }, data => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
           return;
@@ -97,6 +103,7 @@
         const now = new Date().toISOString();
         const scanIdx = (data.scanCount || 0) + 1;
         let feed = data.newEntries || [];
+        const timestampEntries = data.timestampEntries || [];
         const evicted = new Set(data.evictedFromFeed || []);
         trends.forEach(q => {
           const isFirstTime = !history[q];
@@ -107,6 +114,7 @@
           history[q].count += 1;
           history[q].lastSeen = now;
           history[q].recent = (history[q].recent || []).concat(scanIdx).slice(-15);
+          timestampEntries.push({ scan: scanIdx, query: q, capturedAt: now });
         });
         if (feed.length > NEW_ENTRIES_LIMIT) {
           const overflow = feed.slice(NEW_ENTRIES_LIMIT);
@@ -117,6 +125,7 @@
           trendHistory: history,
           scanCount: scanIdx,
           newEntries: feed,
+          timestampEntries,
           evictedFromFeed: Array.from(evicted).slice(-500),
           lastCaptureAt: Date.now(),
         }, () => {
@@ -127,65 +136,53 @@
     });
   }
 
-  // Auto-capture chained sequence: on page load, if enabled, run ONE cycle
-  // (focus search bar -> wait for dropdown -> save trends -> reload).
-  // The next cycle starts naturally when the page finishes reloading.
   function getSearchInput() {
     return document.querySelector('textarea[name="q"], input[name="q"]');
   }
 
-  function waitForTrends(timeoutMs = 4000) {
-    return new Promise(resolve => {
-      const start = Date.now();
-      const check = () => {
-        const trends = getTrendingSearches();
-        if (trends.length > 0) return resolve(trends);
-        if (Date.now() - start > timeoutMs) return resolve([]);
-        setTimeout(check, 150);
-      };
-      check();
-    });
+  function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async function runOneAutoCycle() {
-    try {
+  async function waitForTrends(timeoutMs = 2000) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const trends = getTrendingSearches();
+      if (trends.length > 0) return trends;
+      await delay(150);
+    }
+    return [];
+  }
+
+  function clickOutsideSearch(input) {
+    input.blur();
+    const eventOptions = { bubbles: true, cancelable: true, view: window };
+    document.body.dispatchEvent(new MouseEvent('mousedown', eventOptions));
+    document.body.dispatchEvent(new MouseEvent('mouseup', eventOptions));
+    document.body.dispatchEvent(new MouseEvent('click', eventOptions));
+  }
+
+  async function runCaptureLoop() {
+    while (true) {
       const input = getSearchInput();
-      if (input) {
+      if (!input) {
+        await delay(2000);
+        continue;
+      }
+
+      try {
         input.focus();
         input.click();
-        input.dispatchEvent(new Event('focus', { bubbles: true }));
-        input.dispatchEvent(new Event('click', { bubbles: true }));
+        const trends = await waitForTrends();
+        if (trends.length > 0) await saveTrendsToStorage(trends);
+      } catch (error) {
+        console.error('[GTS] capture error', error);
       }
-      const trends = await waitForTrends(4000);
-      if (trends.length > 0) await saveTrendsToStorage(trends);
 
-      // Increment cycle count, then refresh to chain the next cycle
-      chrome.storage.local.get({ cycleCount: 0, autoCapture: false }, data => {
-        if (!data.autoCapture) return; // user paused mid-cycle
-        const next = (data.cycleCount || 0) + 1;
-        chrome.storage.local.set({ cycleCount: next }, () => {
-          setTimeout(() => window.location.reload(), 700);
-        });
-      });
-    } catch (e) {
-      console.error('[GTS] auto-capture error', e);
-      chrome.storage.local.get({ autoCapture: false }, d => {
-        if (d.autoCapture) setTimeout(() => window.location.reload(), 2000);
-      });
+      clickOutsideSearch(input);
+      await delay(30000);
     }
   }
 
-  // React to user toggling Start/Pause from the popup
-  chrome.storage.onChanged.addListener((changes) => {
-    if (changes.autoCapture) {
-      const nowOn = !!changes.autoCapture.newValue;
-      if (nowOn) setTimeout(runOneAutoCycle, 300);
-    }
-  });
-
-  // On every page load, if auto-capture is ON, kick off exactly one cycle.
-  chrome.storage.local.get({ autoCapture: false }, data => {
-    if (data.autoCapture) setTimeout(runOneAutoCycle, 1200);
-  });
-
+  setTimeout(runCaptureLoop, 800);
 })();

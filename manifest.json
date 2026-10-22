@@ -2,15 +2,15 @@
   "manifest_version": 3,
   "name": "Trending Searches V4",
   "version": "4.0.0",
-  "description": "Capture Google autocomplete suggestions, view local history, export results, and sync scans to Google Sheets.",
-  "permissions": ["activeTab", "alarms", "clipboardWrite", "scripting", "storage", "tabs"],
+  "description": "Automatically capture Google autocomplete suggestions and sync scans to Google Sheets.",
+  "permissions": ["clipboardWrite", "storage"],
   "host_permissions": ["https://script.google.com/*", "https://script.googleusercontent.com/*"],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["*://www.google.com/*", "*://www.google.co.uk/*", "*://www.google.co.za/*", "*://www.google.co.in/*", "*://www.google.com.au/*", "*://www.google.com.br/*", "*://www.google.ca/*", "*://www.google.de/*", "*://www.google.fr/*"],
+      "matches": ["*://*.google.com/*", "*://*.google.co.uk/*", "*://*.google.co.za/*", "*://*.google.co.in/*", "*://*.google.com.au/*", "*://*.google.com.br/*", "*://*.google.ca/*", "*://*.google.de/*", "*://*.google.fr/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
