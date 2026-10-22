@@ -180,10 +180,6 @@
           const trends = await waitForTrends();
           if (captureEnabled && trends.length > 0) {
             await saveTrendsToStorage(trends);
-            if (captureEnabled) {
-              window.location.reload();
-              return;
-            }
           }
         } catch (error) {
           console.error('[GTS] capture error', error);
