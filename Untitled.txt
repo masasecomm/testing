@@ -4,3 +4,9 @@ https://workspace.google.com/marketplace/app/zip_extractor/824911851129
 
 
 https://script.google.com/macros/s/AKfycbxzO5O7LcB_dZRz1hfeDlWdQ948hPVUjlkTBsOdCZBEEefaLHVh4eofsjyqSsargXhL7A/exec
+
+
+
+
+# Create a desktop shortcut for Chromium
+echo -e '[Desktop Entry]\nName=Chromium\nExec=chromium-browser\nIcon=chromium-browser\nType=Application\nTerminal=false' | sudo tee /usr/share/applications/chromium.desktop
