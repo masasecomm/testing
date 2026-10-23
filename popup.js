@@ -55,29 +55,10 @@ captureToggle.addEventListener('click', async () => {
       return;
     }
 
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || typeof tab.id !== 'number') {
-      throw new Error('Could not identify the active tab.');
-    }
-
-    await setLocalData({ autoCapture: true, captureTabId: tab.id, captureError: '' });
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['content.js'],
-      });
-      updateCaptureButton(true);
-      setSheetStatus('✅ Scanning this tab for Google search suggestions.', 'ok');
-    } catch (error) {
-      await setLocalData({
-        autoCapture: false,
-        captureTabId: null,
-        captureError: error.message,
-      });
-      throw new Error(
-        'Chromium blocks extensions from injecting into this page (including chrome://newtab). Open a regular webpage with a Google search input and press Start there.',
-      );
-    }
+    const response = await chrome.runtime.sendMessage({ action: 'startGoogleCapture' });
+    if (!response || !response.ok) throw new Error(response?.error || 'Could not open Google.');
+    updateCaptureButton(true);
+    setSheetStatus('✅ Google tab opened. Scanning will start when it finishes loading.', 'ok');
   } catch (error) {
     setSheetStatus('❌ Could not change scanning state: ' + error.message, 'err');
   } finally {

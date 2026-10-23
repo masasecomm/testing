@@ -4,7 +4,19 @@
   "version": "4.0.0",
   "description": "Automatically capture Google autocomplete suggestions and sync scans to Google Sheets.",
   "permissions": ["activeTab", "scripting", "storage", "tabs"],
-  "host_permissions": ["https://script.google.com/*", "https://script.googleusercontent.com/*"],
+  "host_permissions": [
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*",
+    "https://www.google.com/*",
+    "https://www.google.co.uk/*",
+    "https://www.google.co.za/*",
+    "https://www.google.co.in/*",
+    "https://www.google.com.au/*",
+    "https://www.google.com.br/*",
+    "https://www.google.ca/*",
+    "https://www.google.de/*",
+    "https://www.google.fr/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },

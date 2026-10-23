@@ -135,6 +135,42 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
   }
 });
 
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action !== 'startGoogleCapture') return false;
+
+  (async () => {
+    const tab = await chrome.tabs.create({
+      url: 'https://www.google.com/',
+      active: true,
+    });
+    if (typeof tab.id !== 'number') throw new Error('Chromium did not return the new tab ID.');
+
+    await chrome.storage.local.set({
+      autoCapture: true,
+      captureTabId: tab.id,
+      captureError: '',
+    });
+
+    const currentTab = await chrome.tabs.get(tab.id);
+    if (currentTab.status === 'complete') {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js'],
+      });
+    }
+    return { ok: true };
+  })().then(sendResponse).catch(error => {
+    console.error('[GTS] Could not start Google capture', error);
+    chrome.storage.local.set({
+      autoCapture: false,
+      captureTabId: null,
+      captureError: error.message,
+    });
+    sendResponse({ ok: false, error: error.message });
+  });
+  return true;
+});
+
 chrome.tabs.onRemoved.addListener(async tabId => {
   const data = await chrome.storage.local.get({ captureTabId: null });
   if (data.captureTabId !== tabId) return;
