@@ -3,9 +3,9 @@ const NEW_ENTRIES_LIMIT = 10;
 let sheetSyncRunning = false;
 let sheetSyncRequested = false;
 
-function formatCATDateTime(date = new Date()) {
+function formatCentralDateTime(date = new Date()) {
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Africa/Harare',
+    timeZone: 'America/Chicago',
     hour12: false,
     day: '2-digit',
     month: '2-digit',
@@ -44,7 +44,7 @@ function buildSheetPayload(data) {
 
   return {
     action: 'bucketSync',
-    exportedAtCAT: formatCATDateTime() + ' CAT',
+    exportedAtCentral: formatCentralDateTime() + ' Central Time',
     all: toRows(entries.sort((a, b) => b.count - a.count)),
     newEntries: toRows(newQueries.map(entry =>
       byQuery.get(entry.query) || { query: entry.query, count: 1 })),

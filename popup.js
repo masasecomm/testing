@@ -29,9 +29,9 @@ function setLocalData(values) {
   });
 }
 
-function formatCATTime(timestamp) {
+function formatCentralTime(timestamp) {
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Africa/Harare',
+    timeZone: 'America/Chicago',
     hour12: false,
     hour: '2-digit',
     minute: '2-digit',
@@ -144,7 +144,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.lastSheetSyncError && changes.lastSheetSyncError.newValue) {
     setSheetStatus('❌ Automatic sync failed: ' + changes.lastSheetSyncError.newValue, 'err');
   } else if (changes.lastSheetSyncAt && Number(changes.lastSheetSyncAt.newValue) > 0) {
-    setSheetStatus('✅ Google Sheet updated at ' + formatCATTime(changes.lastSheetSyncAt.newValue), 'ok');
+    setSheetStatus('✅ Google Sheet updated at ' + formatCentralTime(changes.lastSheetSyncAt.newValue) + ' Central Time', 'ok');
   }
 });
 
@@ -163,7 +163,7 @@ async function init() {
     if (data.lastSheetSyncError) {
       setSheetStatus('❌ Last automatic sync failed: ' + data.lastSheetSyncError, 'err');
     } else if (data.lastSheetSyncAt) {
-      setSheetStatus('✅ Last Google Sheet update at ' + formatCATTime(data.lastSheetSyncAt), 'ok');
+      setSheetStatus('✅ Last Google Sheet update at ' + formatCentralTime(data.lastSheetSyncAt) + ' Central Time', 'ok');
     }
   } catch (error) {
     setSheetStatus('❌ Could not load settings: ' + error.message, 'err');
